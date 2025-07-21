@@ -6,6 +6,9 @@
 *.backup.log
 *.html
 *.xml
+*.vcd
+*.wdb
+*.ltx
 
 # Auto-generated folders (large, can be regenerated)
 *.cache/
@@ -17,24 +20,30 @@
 *.tmp/
 *.sdk/
 *.data/
-
-# Waveform and debug
-*.wdb
-*.ltx
 *.xsim/
-
-# Board files and databases
-*.db
-*.xpr.cache/
 *.Xil/
+*.xpr.cache/
 
-# Vivado HLS or Vitis generated
-/solution*/  
-/.vivado_hls*
-/.vitis/
+# Vivado IP and block design
+*.xci
+*.dcp
+*.xo
+*.xsa
+*.bd
+*.prj
+*.xgui
 
 # Vivado project user-specific config
 *.xpr.user
+*.tcl.save
+
+# Optional: ignore .xpr file if you want a source-only repo
+*.xpr
+
+# Vivado HLS or Vitis generated
+/solution*/
+/.vivado_hls*
+/.vitis/
 
 # OS/system files
 .DS_Store
