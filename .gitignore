@@ -1,0 +1,43 @@
+# Vivado project temporary files
+*.log
+*.jou
+*.str
+*.backup.jou
+*.backup.log
+*.html
+*.xml
+
+# Auto-generated folders (large, can be regenerated)
+*.cache/
+*.runs/
+*.hw/
+*.ip_user_files/
+*.webtalk/
+*.sim/
+*.tmp/
+*.sdk/
+*.data/
+
+# Waveform and debug
+*.wdb
+*.ltx
+*.xsim/
+
+# Board files and databases
+*.db
+*.xpr.cache/
+*.Xil/
+
+# Vivado HLS or Vitis generated
+/solution*/  
+/.vivado_hls*
+/.vitis/
+
+# Vivado project user-specific config
+*.xpr.user
+
+# OS/system files
+.DS_Store
+Thumbs.db
+*.swp
+*~
