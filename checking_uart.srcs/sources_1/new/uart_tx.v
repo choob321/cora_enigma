@@ -3,7 +3,7 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 17.07.2025 17:41:24
+// Create Date: 21.07.2025 14:15:52
 // Design Name: 
 // Module Name: uart_tx
 // Project Name: 
@@ -20,65 +20,41 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module uart_tx(
-    input clk,              // 100 MHz clock
-    output reg uart_tx = 1  // UART TX line (idle high)
+module uart_tx (
+    input wire clk,
+    input wire send,
+    input wire [7:0] data_in,
+    output wire tx,
+    output reg busy
 );
+    parameter CLK_FREQ = 125_000_000;
+    parameter BAUD_RATE = 9600;
+    localparam integer BAUD_TICKS = CLK_FREQ / BAUD_RATE;
 
-    parameter CLK_FREQ = 100_000_000;  // 100 MHz
-    parameter BAUD_RATE = 115200;
-    parameter BAUD_DIV = CLK_FREQ / BAUD_RATE;
+    reg [13:0] baud_counter = 0;
+    reg [3:0] bit_index = 0;
+    reg [9:0] tx_shift = 10'b1111111111;
 
-    reg [13:0] baud_cnt = 0;
-    reg baud_tick = 0;
+    assign tx = tx_shift[0];
 
-    reg [3:0] bit_idx = 0;
-    reg [9:0] shift_reg = 10'b0; // start + 8 data + stop
-    reg sending = 0;
-
-    reg [23:0] delay_cnt = 0;
-    reg send_request = 0;
-
-    // Baud tick generator
     always @(posedge clk) begin
-        if (baud_cnt == BAUD_DIV - 1) begin
-            baud_cnt <= 0;
-            baud_tick <= 1;
-        end else begin
-            baud_cnt <= baud_cnt + 1;
-            baud_tick <= 0;
-        end
-    end
+        if (!busy && send) begin
+            tx_shift <= {1'b1, data_in, 1'b0}; // stop + data + start
+            bit_index <= 10;
+            busy <= 1;
+            baud_counter <= BAUD_TICKS - 1;
+        end else if (busy) begin
+            if (baud_counter == 0) begin
+                tx_shift <= {1'b1, tx_shift[9:1]};
+                bit_index <= bit_index - 1;
+                baud_counter <= BAUD_TICKS - 1;
 
-    // Delay between bytes
-    always @(posedge clk) begin
-        if (!sending) begin
-            if (delay_cnt == 10_000_000) begin  // ~0.1 sec delay
-                delay_cnt <= 0;
-                send_request <= 1;
+                if (bit_index == 1) begin
+                    busy <= 0;
+                end
             end else begin
-                delay_cnt <= delay_cnt + 1;
-                send_request <= 0;
+                baud_counter <= baud_counter - 1;
             end
         end
     end
-
-    // Transmit state machine
-    always @(posedge clk) begin
-        if (!sending && send_request) begin
-            // Prepare to send ASCII 'A' (8'h41)
-            shift_reg <= {1'b1, 8'h41, 1'b0};  // Stop + data + Start
-            bit_idx <= 0;
-            sending <= 1;
-        end else if (sending && baud_tick) begin
-            uart_tx <= shift_reg[bit_idx];
-            bit_idx <= bit_idx + 1;
-            if (bit_idx == 9) begin
-                sending <= 0;
-                uart_tx <= 1;  // idle
-            end
-        end
-    end
-
 endmodule
-
