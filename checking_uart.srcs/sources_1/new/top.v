@@ -21,13 +21,17 @@
 
 
 module top(
-    input clk,
-    output uart_tx
+    input clk,              // 125 MHz clock
+    input uart_rx,          // UART receive line
+    output led0_b      // Output LED toggles on character received
 );
 
-    uart_a_sender uut (
+
+    uart_rx_toggle uut (
         .clk(clk),
-        .uart_tx(uart_tx)
+        .rx(uart_rx),
+        .led_out(led0_b)
     );
 
 endmodule
+
