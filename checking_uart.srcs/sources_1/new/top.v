@@ -31,13 +31,21 @@ module top (
 
     reg send_flag = 0;
     reg [7:0] tx_buffer = 0;
-
+    
+    wire [7:0] encrypted_char;
+    
     uart_rx #(.CLK_FREQ(125_000_000), .BAUD_RATE(9600)) rx_inst (
         .clk(clk),
         .rx(uart_rx),
         .data_out(rx_data),
         .data_valid(rx_valid)
     );
+    
+    caeser caeser_inst (
+        .char_in(rx_data),
+        .char_out(encrypted_char)
+    );
+
 
     uart_tx #(.CLK_FREQ(125_000_000), .BAUD_RATE(9600)) tx_inst (
         .clk(clk),
@@ -50,7 +58,7 @@ module top (
     always @(posedge clk) begin
         send_flag <= 0;
         if (rx_valid && !tx_busy) begin
-            tx_buffer <= rx_data;
+            tx_buffer <= encrypted_char;
             send_flag <= 1;
         end
     end
