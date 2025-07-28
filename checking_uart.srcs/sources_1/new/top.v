@@ -22,17 +22,17 @@
 
 module top (
     input wire clk,
-    input wire uart_rx,
-    output wire uart_tx
+    input wire uart_rx, // pin T14, io[2], connected to tx of ch340g
+    output wire uart_tx // pin T15, io[3], connected to rx of ch340g
 );
-    wire [7:0] rx_data;
+    wire [7:0] rx_data; // output character of uart_rx, the one the user typed
     wire rx_valid;
     wire tx_busy;
 
     reg send_flag = 0;
     reg [7:0] tx_buffer = 0;
     
-    wire [7:0] encrypted_char;
+    wire [7:0] encrypted_char; // output char after going through enigma
     
     uart_rx #(.CLK_FREQ(125_000_000), .BAUD_RATE(9600)) rx_inst (
         .clk(clk),

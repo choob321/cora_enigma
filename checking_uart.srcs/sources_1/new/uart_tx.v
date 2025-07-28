@@ -29,7 +29,7 @@ module uart_tx (
 );
     parameter CLK_FREQ = 125_000_000;
     parameter BAUD_RATE = 9600;
-    localparam integer BAUD_TICKS = CLK_FREQ / BAUD_RATE;
+    localparam integer BAUD_TICKS = CLK_FREQ / BAUD_RATE; // ~ 13020.83 clock cycles per bit
 
     reg [13:0] baud_counter = 0;
     reg [3:0] bit_index = 0;
