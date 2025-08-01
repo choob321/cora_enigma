@@ -22,44 +22,33 @@
 
 module top (
     input wire clk,
-    input wire uart_rx, // pin T14, io[2], connected to tx of ch340g
-    output wire uart_tx // pin T15, io[3], connected to rx of ch340g
+    input wire rx,
+    output wire tx
 );
-    wire [7:0] rx_data; // output character of uart_rx, the one the user typed
-    wire rx_valid;
-    wire tx_busy;
+    wire [7:0] rx_data;
+    wire [7:0] tx_data;
+    wire rx_valid, tx_busy, tx_start, enigma_valid;
 
-    reg send_flag = 0;
-    reg [7:0] tx_buffer = 0;
-    
-    wire [7:0] encrypted_char; // output char after going through enigma
-    
-    uart_rx #(.CLK_FREQ(125_000_000), .BAUD_RATE(9600)) rx_inst (
+    uart_rx #(.CLK_FREQ(125_000_000), .BAUD_RATE(9600)) urx (
         .clk(clk),
-        .rx(uart_rx),
+        .rx(rx),
         .data_out(rx_data),
         .data_valid(rx_valid)
     );
-    
-    caeser caeser_inst (
+
+    enigma_core enigma (
+        .clk(clk),
         .char_in(rx_data),
-        .char_out(encrypted_char)
+        .valid_in(rx_valid),
+        .char_out(tx_data),
+        .valid_out(enigma_valid)
     );
 
-
-    uart_tx #(.CLK_FREQ(125_000_000), .BAUD_RATE(9600)) tx_inst (
+    uart_tx #(.CLK_FREQ(125_000_000), .BAUD_RATE(9600)) utx (
         .clk(clk),
-        .send(send_flag),
-        .data_in(tx_buffer),
-        .tx(uart_tx),
+        .send(enigma_valid),
+        .data_in(tx_data),
+        .tx(tx),
         .busy(tx_busy)
     );
-
-    always @(posedge clk) begin
-        send_flag <= 0;
-        if (rx_valid && !tx_busy) begin
-            tx_buffer <= encrypted_char;
-            send_flag <= 1;
-        end
-    end
 endmodule
