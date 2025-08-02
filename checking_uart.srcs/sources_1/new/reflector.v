@@ -24,39 +24,19 @@ module reflector (
     input wire [4:0] char_in,
     output reg [4:0] char_out
 );
+    reg [4:0] refl_map [0:25];
 
-    // Reflector B wiring: YRUHQSLDPXNGOKMIEBFZCWVJAT
-    always @(*) begin
-        case (char_in)
-            5'd0:  char_out = 5'd24; // A ? Y
-            5'd1:  char_out = 5'd17; // B ? R
-            5'd2:  char_out = 5'd20; // C ? U
-            5'd3:  char_out = 5'd7;  // D ? H
-            5'd4:  char_out = 5'd16; // E ? Q
-            5'd5:  char_out = 5'd18; // F ? S
-            5'd6:  char_out = 5'd11; // G ? L
-            5'd7:  char_out = 5'd3;  // H ? D
-            5'd8:  char_out = 5'd15; // I ? P
-            5'd9:  char_out = 5'd23; // J ? X
-            5'd10: char_out = 5'd13; // K ? N
-            5'd11: char_out = 5'd6;  // L ? G
-            5'd12: char_out = 5'd14; // M ? O
-            5'd13: char_out = 5'd10; // N ? K
-            5'd14: char_out = 5'd12; // O ? M
-            5'd15: char_out = 5'd8;  // P ? I
-            5'd16: char_out = 5'd4;  // Q ? E
-            5'd17: char_out = 5'd1;  // R ? B
-            5'd18: char_out = 5'd5;  // S ? F
-            5'd19: char_out = 5'd25; // T ? Z
-            5'd20: char_out = 5'd2;  // U ? C
-            5'd21: char_out = 5'd22; // V ? W
-            5'd22: char_out = 5'd21; // W ? V
-            5'd23: char_out = 5'd9;  // X ? J
-            5'd24: char_out = 5'd0;  // Y ? A
-            5'd25: char_out = 5'd19; // Z ? T
-            default: char_out = 5'd0;
-        endcase
+    initial begin
+        refl_map[ 0]=24; refl_map[ 1]=17; refl_map[ 2]=20; refl_map[ 3]=7;  refl_map[ 4]=16;
+        refl_map[ 5]=18; refl_map[ 6]=11; refl_map[ 7]=3;  refl_map[ 8]=15; refl_map[ 9]=23;
+        refl_map[10]=13; refl_map[11]=6;  refl_map[12]=14; refl_map[13]=10; refl_map[14]=12;
+        refl_map[15]=8;  refl_map[16]=4;  refl_map[17]=1;  refl_map[18]=5;  refl_map[19]=25;
+        refl_map[20]=2;  refl_map[21]=22; refl_map[22]=21; refl_map[23]=9;  refl_map[24]=0;
+        refl_map[25]=19;
     end
 
+    always @(*) begin
+        char_out = refl_map[char_in];
+    end
 endmodule
 

@@ -21,61 +21,30 @@
 
 
 module rotor3 (
-    input wire [4:0] in_char,
-    input wire reverse,
-    input wire [4:0] position,
-    output reg [4:0] out_char
+    input wire [4:0] char_in,
+    input wire [4:0] offset,
+    output reg [4:0] char_out,
+    input wire [4:0] reverse_in,
+    output reg [4:0] reverse_out
 );
-
     reg [4:0] forward_map [0:25];
-    
+    reg [4:0] reverse_map [0:25];
     integer i;
 
     initial begin
-        // Rotor III: BDFHJLCPRTXVZNYEIWGAKMUSQO
-        forward_map[0] = 5'd1;   // A -> B
-        forward_map[1] = 5'd3;   // B -> D
-        forward_map[2] = 5'd5;   // C -> F
-        forward_map[3] = 5'd7;   // D -> H
-        forward_map[4] = 5'd9;   // E -> J
-        
-        forward_map[5] = 5'd11;   // F -> G
-        forward_map[6] = 5'd2;  // G -> D
-        forward_map[7] = 5'd15;  // H -> Q
-        forward_map[8] = 5'd17;   // I -> V
-        forward_map[9] = 5'd19;  // J -> Z
-        
-        forward_map[10] = 5'd23;   // K -> N
-        forward_map[11] = 5'd21;  // L -> T
-        forward_map[12] = 5'd25;  // M -> O
-        forward_map[13] = 5'd13;   // N -> W
-        forward_map[14] = 5'd24;  // O -> Y
-        
-        forward_map[15] = 5'd4;   // P -> H
-        forward_map[16] = 5'd8;  // Q -> X
-        forward_map[17] = 5'd22;  // R -> U
-        forward_map[18] = 5'd6;   // S -> S
-        forward_map[19] = 5'd0;  // T -> P
-        
-        forward_map[20] = 5'd10;   // U -> A
-        forward_map[21] = 5'd12;  // V -> I
-        forward_map[22] = 5'd20;  // W -> B
-        forward_map[23] = 5'd18;   // X -> R
-        forward_map[24] = 5'd16;  // Y -> C
-        forward_map[25] = 5'd14;   // Z -> J
-        
+        forward_map[ 0]=1;  forward_map[ 1]=3;  forward_map[ 2]=5;  forward_map[ 3]=7;  forward_map[ 4]=9;
+        forward_map[ 5]=11; forward_map[ 6]=2;  forward_map[ 7]=15; forward_map[ 8]=17; forward_map[ 9]=19;
+        forward_map[10]=23; forward_map[11]=21; forward_map[12]=25; forward_map[13]=13; forward_map[14]=24;
+        forward_map[15]=4;  forward_map[16]=8;  forward_map[17]=22; forward_map[18]=6;  forward_map[19]=0;
+        forward_map[20]=10; forward_map[21]=12; forward_map[22]=20; forward_map[23]=18; forward_map[24]=16;
+        forward_map[25]=14;
+
+        for (i = 0; i < 26; i = i + 1)
+            reverse_map[forward_map[i]] = i;
     end
 
-    //reg [4:0] temp, adjusted_in, adjusted_out;
-
     always @(*) begin
-        if (!reverse) begin
-            out_char = (forward_map[(in_char + position) % 26] + 26 - position) % 26;
-        end else begin
-            for (i = 0; i < 26; i = i + 1) begin
-                if (forward_map[i] == (in_char + position) % 26)
-                    out_char = (i + 26 - position) % 26;
-            end
-        end
+        char_out = (forward_map[(char_in + offset) % 26] + (26 - offset)) % 26;
+        reverse_out = (reverse_map[(reverse_in + offset) % 26] + (26 - offset)) % 26;
     end
 endmodule
