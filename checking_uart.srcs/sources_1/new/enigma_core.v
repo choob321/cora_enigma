@@ -22,44 +22,107 @@
 
 module enigma_core (
     input wire clk,
-    input wire [7:0] char_in,
+    input wire reset,
+    input wire [7:0] ascii_in,
     input wire valid_in,
-    output reg [7:0] char_out,
+    output reg [7:0] ascii_out,
     output reg valid_out
 );
+    // Rotor positions
+    reg [4:0] rotor1_pos = 0;
+    reg [4:0] rotor2_pos = 0;
+    reg [4:0] rotor3_pos = 0;
 
-    reg [4:0] pos1 = 0, pos2 = 0, pos3 = 0;
-    wire [4:0] index_in;
-    wire [4:0] step1_out, step2_out, step3_out, refl_out;
-    wire [4:0] rev3_out, rev2_out, rev1_out;
-    reg [4:0] result;
+    // Flags for stepping
+    wire rotor3_step = valid_in;
+    wire rotor2_step = (rotor3_pos == 5'd21) && rotor3_step; // Rotor III notch at V (pos 21)
+    wire rotor1_step = (rotor2_pos == 5'd4) && rotor2_step;  // Rotor II notch at E (pos 4)
 
-    assign index_in = (char_in >= "A" && char_in <= "Z") ? (char_in - "A") :
-                      (char_in >= "a" && char_in <= "z") ? (char_in - "a") : 0;
+    // Pipeline stage registers
+    reg [4:0] stage1_char;
+    reg [4:0] stage2_char;
+    reg [4:0] stage3_char;
+    reg [4:0] stage4_char;
+    reg [4:0] stage5_char;
+    reg [4:0] stage6_char;
+    reg [4:0] stage7_char;
 
-    rotor1 r1 (.char_in(index_in), .offset(pos1), .char_out(step1_out), .reverse_in(rev1_out), .reverse_out());
-    rotor2 r2 (.char_in(step1_out), .offset(pos2), .char_out(step2_out), .reverse_in(rev2_out), .reverse_out());
-    rotor3 r3 (.char_in(step2_out), .offset(pos3), .char_out(step3_out), .reverse_in(rev3_out), .reverse_out());
+    wire [4:0] rotor3_out_fwd, rotor2_out_fwd, rotor1_out_fwd;
+    wire [4:0] reflector_out;
+    wire [4:0] rotor1_out_rev, rotor2_out_rev, rotor3_out_rev;
 
-    reflector refl (.char_in(step3_out), .char_out(refl_out));
+    wire [4:0] ascii_index = ascii_in - 8'd65;
 
-    rotor3 r3_rev (.char_in(), .offset(pos3), .char_out(), .reverse_in(refl_out), .reverse_out(rev3_out));
-    rotor2 r2_rev (.char_in(), .offset(pos2), .char_out(), .reverse_in(rev3_out), .reverse_out(rev2_out));
-    rotor1 r1_rev (.char_in(), .offset(pos1), .char_out(), .reverse_in(rev2_out), .reverse_out(rev1_out));
+    // Instantiate rotors and reflector
+    rotor3 u_r3_fwd (.in_char(stage1_char), .offset(rotor3_pos), .reverse(1'b0), .out_char(rotor3_out_fwd));
+    rotor2 u_r2_fwd (.in_char(stage2_char), .offset(rotor2_pos), .reverse(1'b0), .out_char(rotor2_out_fwd));
+    rotor1 u_r1_fwd (.in_char(stage3_char), .offset(rotor1_pos), .reverse(1'b0), .out_char(rotor1_out_fwd));
 
-    always @(posedge clk) begin
-        valid_out <= 0;
-        if (valid_in && char_in >= "A" && char_in <= "Z") begin
-            // Stepping logic: right rotor steps every keypress, others as needed
-            pos1 <= pos1 + 1;
-            if (pos1 == 25)
-                pos2 <= pos2 + 1;
-            if (pos2 == 25 && pos1 == 25)
-                pos3 <= pos3 + 1;
+    reflector u_reflector (.in_char(stage4_char), .out_char(reflector_out));
 
-            result <= rev1_out;
-            char_out <= result + "A";
-            valid_out <= 1;
+    rotor1 u_r1_rev (.in_char(stage5_char), .offset(rotor1_pos), .reverse(1'b1), .out_char(rotor1_out_rev));
+    rotor2 u_r2_rev (.in_char(stage6_char), .offset(rotor2_pos), .reverse(1'b1), .out_char(rotor2_out_rev));
+    rotor3 u_r3_rev (.in_char(stage7_char), .offset(rotor3_pos), .reverse(1'b1), .out_char(rotor3_out_rev));
+
+    // Rotor stepping logic
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            rotor1_pos <= 0;
+            rotor2_pos <= 0;
+            rotor3_pos <= 0;
+        end else if (valid_in) begin
+            // Advance rotor3 every key press
+            if (rotor3_pos == 5'd25)
+                rotor3_pos <= 0;
+            else
+                rotor3_pos <= rotor3_pos + 1;
+
+            // Step rotor2 if rotor3 at notch
+            if (rotor2_step) begin
+                if (rotor2_pos == 5'd25)
+                    rotor2_pos <= 0;
+                else
+                    rotor2_pos <= rotor2_pos + 1;
+            end
+
+            // Step rotor1 if rotor2 at notch
+            if (rotor1_step) begin
+                if (rotor1_pos == 5'd25)
+                    rotor1_pos <= 0;
+                else
+                    rotor1_pos <= rotor1_pos + 1;
+            end
+        end
+    end
+
+    // Pipelined signal path
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            stage1_char <= 0;
+            stage2_char <= 0;
+            stage3_char <= 0;
+            stage4_char <= 0;
+            stage5_char <= 0;
+            stage6_char <= 0;
+            stage7_char <= 0;
+            ascii_out <= 8'd0;
+            valid_out <= 0;
+        end else begin
+            if (valid_in && ascii_in >= 8'd65 && ascii_in <= 8'd90) begin // Only uppercase A–Z
+                stage1_char <= ascii_index;
+            end else begin
+                stage1_char <= 0;
+            end
+
+            stage2_char <= rotor3_out_fwd;
+            stage3_char <= rotor2_out_fwd;
+            stage4_char <= rotor1_out_fwd;
+            stage5_char <= reflector_out;
+            stage6_char <= rotor1_out_rev;
+            stage7_char <= rotor2_out_rev;
+
+            ascii_out <= rotor3_out_rev + 8'd65;
+            valid_out <= valid_in;
         end
     end
 endmodule

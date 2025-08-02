@@ -21,22 +21,41 @@
 
 
 module reflector (
-    input wire [4:0] char_in,
-    output reg [4:0] char_out
+    input wire [4:0] in_char,
+    output reg [4:0] out_char
 );
-    reg [4:0] refl_map [0:25];
-
-    initial begin
-        refl_map[ 0]=24; refl_map[ 1]=17; refl_map[ 2]=20; refl_map[ 3]=7;  refl_map[ 4]=16;
-        refl_map[ 5]=18; refl_map[ 6]=11; refl_map[ 7]=3;  refl_map[ 8]=15; refl_map[ 9]=23;
-        refl_map[10]=13; refl_map[11]=6;  refl_map[12]=14; refl_map[13]=10; refl_map[14]=12;
-        refl_map[15]=8;  refl_map[16]=4;  refl_map[17]=1;  refl_map[18]=5;  refl_map[19]=25;
-        refl_map[20]=2;  refl_map[21]=22; refl_map[22]=21; refl_map[23]=9;  refl_map[24]=0;
-        refl_map[25]=19;
-    end
+    reg [4:0] map [0:25];
 
     always @(*) begin
-        char_out = refl_map[char_in];
+        out_char = map[in_char];
+    end
+
+    initial begin
+        map[ 0] = 5'd24; // A ? Y
+        map[ 1] = 5'd17; // B ? R
+        map[ 2] = 5'd20; // C ? U
+        map[ 3] = 5'd7;  // D ? H
+        map[ 4] = 5'd16; // E ? Q
+        map[ 5] = 5'd18; // F ? S
+        map[ 6] = 5'd11; // G ? L
+        map[ 7] = 5'd3;  // H ? D
+        map[ 8] = 5'd15; // I ? P
+        map[ 9] = 5'd23; // J ? X
+        map[10] = 5'd13; // K ? N
+        map[11] = 5'd6;  // L ? G
+        map[12] = 5'd14; // M ? O
+        map[13] = 5'd10; // N ? K
+        map[14] = 5'd12; // O ? M
+        map[15] = 5'd8;  // P ? I
+        map[16] = 5'd4;  // Q ? E
+        map[17] = 5'd1;  // R ? B
+        map[18] = 5'd5;  // S ? F
+        map[19] = 5'd25; // T ? Z
+        map[20] = 5'd2;  // U ? C
+        map[21] = 5'd22; // V ? W
+        map[22] = 5'd21; // W ? V
+        map[23] = 5'd9;  // X ? J
+        map[24] = 5'd0;  // Y ? A
+        map[25] = 5'd19; // Z ? T
     end
 endmodule
-
