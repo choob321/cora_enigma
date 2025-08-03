@@ -21,28 +21,22 @@
 
 
 module rotor2 (
+    input wire clk,
     input wire [4:0] in_char,
     input wire [4:0] offset,
     input wire reverse,
-    output reg [4:0] out_char
+    input wire valid_in,
+    output reg [4:0] out_char,
+    output reg valid_out
 );
     reg [4:0] forward_map [0:25];
     reg [4:0] backward_map [0:25];
-
-    wire [5:0] shifted_in = in_char + offset;
-    wire [4:0] shifted_index = (shifted_in > 25) ? shifted_in - 26 : shifted_in;
-    wire [4:0] raw_out = reverse ? backward_map[shifted_index] : forward_map[shifted_index];
-
-    wire [5:0] unshifted_out = raw_out + (26 - offset);
-    wire [4:0] final_out = (unshifted_out > 25) ? unshifted_out - 26 : unshifted_out[4:0];
+    reg [4:0] shifted_in, mapped_char, unshifted_out;
 
     always @(*) begin
-        out_char = final_out;
-    end
-
-    initial begin
-        forward_map[ 0] = 5'd0;  // A?A
-        forward_map[ 1] = 5'd9;  // B?J
+        // Rotor II: AJDKSIRUXBLHWTMCQGZNPYFVOE
+        forward_map[ 0] = 5'd0;   // A ? A
+        forward_map[ 1] = 5'd9;   // B ? J
         forward_map[ 2] = 5'd3;
         forward_map[ 3] = 5'd10;
         forward_map[ 4] = 5'd18;
@@ -68,8 +62,9 @@ module rotor2 (
         forward_map[24] = 5'd24;
         forward_map[25] = 5'd15;
 
-        backward_map[ 0] = 5'd0;
-        backward_map[ 9] = 5'd1;
+        // Inverse mapping
+        backward_map[0]  = 5'd0;
+        backward_map[9]  = 5'd1;
         backward_map[15] = 5'd2;
         backward_map[2]  = 5'd3;
         backward_map[23] = 5'd4;
@@ -94,5 +89,22 @@ module rotor2 (
         backward_map[8]  = 5'd23;
         backward_map[24] = 5'd24;
         backward_map[18] = 5'd25;
+    end
+
+    always @(posedge clk) begin
+        valid_out <= valid_in;
+        if (valid_in) begin
+            shifted_in = in_char + offset;
+            if (shifted_in >= 26)
+                shifted_in = shifted_in - 26;
+
+            mapped_char = reverse ? backward_map[shifted_in] : forward_map[shifted_in];
+
+            unshifted_out = mapped_char + (26 - offset);
+            if (unshifted_out >= 26)
+                unshifted_out = unshifted_out - 26;
+
+            out_char <= unshifted_out;
+        end
     end
 endmodule

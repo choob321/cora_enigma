@@ -21,16 +21,16 @@
 
 
 module reflector (
+    input wire clk,
     input wire [4:0] in_char,
-    output reg [4:0] out_char
+    input wire valid_in,
+    output reg [4:0] out_char,
+    output reg valid_out
 );
     reg [4:0] map [0:25];
 
     always @(*) begin
-        out_char = map[in_char];
-    end
-
-    initial begin
+        // Reflector B: YRUHQSLDPXNGOKMIEBFZCWVJAT
         map[ 0] = 5'd24; // A ? Y
         map[ 1] = 5'd17; // B ? R
         map[ 2] = 5'd20; // C ? U
@@ -57,5 +57,11 @@ module reflector (
         map[23] = 5'd9;  // X ? J
         map[24] = 5'd0;  // Y ? A
         map[25] = 5'd19; // Z ? T
+    end
+
+    always @(posedge clk) begin
+        valid_out <= valid_in;
+        if (valid_in)
+            out_char <= map[in_char];
     end
 endmodule

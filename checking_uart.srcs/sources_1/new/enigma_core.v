@@ -22,7 +22,7 @@
 
 module enigma_core (
     input wire clk,
-    input wire reset,
+    input wire reset,  // unused, but required by top.v
     input wire [7:0] ascii_in,
     input wire valid_in,
     output reg [7:0] ascii_out,
@@ -33,96 +33,48 @@ module enigma_core (
     reg [4:0] rotor2_pos = 0;
     reg [4:0] rotor3_pos = 0;
 
-    // Flags for stepping
-    wire rotor3_step = valid_in;
-    wire rotor2_step = (rotor3_pos == 5'd21) && rotor3_step; // Rotor III notch at V (pos 21)
-    wire rotor1_step = (rotor2_pos == 5'd4) && rotor2_step;  // Rotor II notch at E (pos 4)
+    // Internal wires
+    wire [4:0] stage0_in = ascii_in - "A";  // Convert ASCII to 0-25
+    wire [4:0] r3_out, r2_out, r1_out;
+    wire [4:0] ref_out, r1_rev, r2_rev, r3_rev;
 
-    // Pipeline stage registers
-    reg [4:0] stage1_char;
-    reg [4:0] stage2_char;
-    reg [4:0] stage3_char;
-    reg [4:0] stage4_char;
-    reg [4:0] stage5_char;
-    reg [4:0] stage6_char;
-    reg [4:0] stage7_char;
+    wire v_r3_fwd, v_r2_fwd, v_r1_fwd, v_ref, v_r1_rev, v_r2_rev, v_r3_rev;
 
-    wire [4:0] rotor3_out_fwd, rotor2_out_fwd, rotor1_out_fwd;
-    wire [4:0] reflector_out;
-    wire [4:0] rotor1_out_rev, rotor2_out_rev, rotor3_out_rev;
-
-    wire [4:0] ascii_index = ascii_in - 8'd65;
-
-    // Instantiate rotors and reflector
-    rotor3 u_r3_fwd (.in_char(stage1_char), .offset(rotor3_pos), .reverse(1'b0), .out_char(rotor3_out_fwd));
-    rotor2 u_r2_fwd (.in_char(stage2_char), .offset(rotor2_pos), .reverse(1'b0), .out_char(rotor2_out_fwd));
-    rotor1 u_r1_fwd (.in_char(stage3_char), .offset(rotor1_pos), .reverse(1'b0), .out_char(rotor1_out_fwd));
-
-    reflector u_reflector (.in_char(stage4_char), .out_char(reflector_out));
-
-    rotor1 u_r1_rev (.in_char(stage5_char), .offset(rotor1_pos), .reverse(1'b1), .out_char(rotor1_out_rev));
-    rotor2 u_r2_rev (.in_char(stage6_char), .offset(rotor2_pos), .reverse(1'b1), .out_char(rotor2_out_rev));
-    rotor3 u_r3_rev (.in_char(stage7_char), .offset(rotor3_pos), .reverse(1'b1), .out_char(rotor3_out_rev));
-
-    // Rotor stepping logic
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            rotor1_pos <= 0;
-            rotor2_pos <= 0;
-            rotor3_pos <= 0;
-        end else if (valid_in) begin
+    // Rotor stepping: done BEFORE encryption (i.e., when valid_in)
+    always @(posedge clk) begin
+        if (valid_in) begin
             // Advance rotor3 every key press
-            if (rotor3_pos == 5'd25)
-                rotor3_pos <= 0;
-            else
-                rotor3_pos <= rotor3_pos + 1;
+            rotor3_pos <= (rotor3_pos == 5'd25) ? 5'd0 : rotor3_pos + 1;
 
-            // Step rotor2 if rotor3 at notch
-            if (rotor2_step) begin
-                if (rotor2_pos == 5'd25)
-                    rotor2_pos <= 0;
-                else
-                    rotor2_pos <= rotor2_pos + 1;
-            end
+            // Rotor2 steps when rotor3 is at notch (Q = index 16)
+            if (rotor3_pos == 5'd16)
+                rotor2_pos <= (rotor2_pos == 5'd25) ? 5'd0 : rotor2_pos + 1;
 
-            // Step rotor1 if rotor2 at notch
-            if (rotor1_step) begin
-                if (rotor1_pos == 5'd25)
-                    rotor1_pos <= 0;
-                else
-                    rotor1_pos <= rotor1_pos + 1;
-            end
+            // Rotor1 steps when rotor2 is at notch (E = index 4)
+            if (rotor2_pos == 5'd4)
+                rotor1_pos <= (rotor1_pos == 5'd25) ? 5'd0 : rotor1_pos + 1;
         end
     end
 
-    // Pipelined signal path
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            stage1_char <= 0;
-            stage2_char <= 0;
-            stage3_char <= 0;
-            stage4_char <= 0;
-            stage5_char <= 0;
-            stage6_char <= 0;
-            stage7_char <= 0;
-            ascii_out <= 8'd0;
-            valid_out <= 0;
-        end else begin
-            if (valid_in && ascii_in >= 8'd65 && ascii_in <= 8'd90) begin // Only uppercase A–Z
-                stage1_char <= ascii_index;
-            end else begin
-                stage1_char <= 0;
-            end
+    // Pipeline: Forward path
+    rotor3 r3(.clk(clk), .in_char(stage0_in), .offset(rotor3_pos), .reverse(1'b0), .valid_in(valid_in), .out_char(r3_out), .valid_out(v_r3_fwd));
+    rotor2 r2(.clk(clk), .in_char(r3_out), .offset(rotor2_pos), .reverse(1'b0), .valid_in(v_r3_fwd), .out_char(r2_out), .valid_out(v_r2_fwd));
+    rotor1 r1(.clk(clk), .in_char(r2_out), .offset(rotor1_pos), .reverse(1'b0), .valid_in(v_r2_fwd), .out_char(r1_out), .valid_out(v_r1_fwd));
 
-            stage2_char <= rotor3_out_fwd;
-            stage3_char <= rotor2_out_fwd;
-            stage4_char <= rotor1_out_fwd;
-            stage5_char <= reflector_out;
-            stage6_char <= rotor1_out_rev;
-            stage7_char <= rotor2_out_rev;
+    // Reflector
+    reflector ref(.clk(clk), .in_char(r1_out), .valid_in(v_r1_fwd), .out_char(ref_out), .valid_out(v_ref));
 
-            ascii_out <= rotor3_out_rev + 8'd65;
-            valid_out <= valid_in;
+    // Reverse path
+    rotor1 r1r(.clk(clk), .in_char(ref_out), .offset(rotor1_pos), .reverse(1'b1), .valid_in(v_ref), .out_char(r1_rev), .valid_out(v_r1_rev));
+    rotor2 r2r(.clk(clk), .in_char(r1_rev), .offset(rotor2_pos), .reverse(1'b1), .valid_in(v_r1_rev), .out_char(r2_rev), .valid_out(v_r2_rev));
+    rotor3 r3r(.clk(clk), .in_char(r2_rev), .offset(rotor3_pos), .reverse(1'b1), .valid_in(v_r2_rev), .out_char(r3_rev), .valid_out(v_r3_rev));
+
+    // Output register
+    always @(posedge clk) begin
+        valid_out <= v_r3_rev;
+        if (v_r3_rev) begin
+            ascii_out <= r3_rev + "A";  // Convert back to ASCII
         end
     end
 endmodule
+
